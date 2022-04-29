@@ -1,7 +1,13 @@
 import {
     UPDATE_PRODUCTS,
     UPDATE_CATEGORIES,
-    UPDATE_CURRENT_CATEGORY
+    UPDATE_CURRENT_CATEGORY,
+    ADD_TO_CART,
+    ADD_MULTIPLE_TO_CART,
+    REMOVE_FROM_CART,
+    UPDATE_CART_QUANTITY,
+    CLEAR_CART,
+    TOGGLE_CART
 } from './actions';
 
 import { useReducer } from 'react';
@@ -35,6 +41,57 @@ export const reducer = (state, action) => {
             ...state,
             currentCategory: action.currentCategory
         };
+
+        case ADD_TO_CART:
+            return {
+                ...state,
+                cartOpen: true, // set to true so the users can immediately view the cart with newly added item
+                cart: [...state.cart, action.product]
+            };
+        case ADD_MULTIPLE_TO_CART:
+            return {
+                ...state,
+                cart: [...state.cart, ...action.products],
+            };
+        case REMOVE_FROM_CART:
+            /*  filter() method only keeps the items that dont match the provided
+                _id property. In the return statement, we check the length of the 
+                array to set cartOpen to false when the array is empty.
+            */
+            let newState = state.cart.filter(product => {
+                return product._id !== action._id;
+            })
+
+            return {
+                ...state,
+                cartOpen: newState.length > 0,
+                cart: newState
+            };
+        // use map() to create a new array instead of updating state.cart directly
+        // because the original state should be treated as immutable.
+        case UPDATE_CART_QUANTITY:
+            return {
+                ...state,
+                cartOpen: true,
+                cart: state.cart.map( product => {
+                    if(action._id === product._id) {
+                        product.purchaseQuantity = action.purchaseQuantity;
+                    }
+                    return product;
+                })
+            };
+        case CLEAR_CART:
+            return {
+                ...state,
+                cartOpen: false,
+                cart: []
+            };
+        case TOGGLE_CART:
+            return {
+                ...state,
+                cartOpen: !state.cartOpen
+            };
+        
   
       default:
         return state;
