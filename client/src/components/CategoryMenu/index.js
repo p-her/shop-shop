@@ -3,6 +3,8 @@ import { useQuery } from '@apollo/client';
 import { QUERY_CATEGORIES } from '../../utils/queries';
 import { UPDATE_CATEGORIES, UPDATE_CURRENT_CATEGORY } from '../../utils/actions';
 import { useStoreContext } from '../../utils/GlobalState';
+import { idbPromise } from '../../utils/helpers';
+
 
 function CategoryMenu({ setCategory }) {
 
@@ -22,7 +24,7 @@ function CategoryMenu({ setCategory }) {
     */
     const [state, dispatch] = useStoreContext();
     const { categories } = state;
-    const { data: categoryData } = useQuery(QUERY_CATEGORIES);
+    const { loading, data: categoryData } = useQuery(QUERY_CATEGORIES);
   
 
     /* 
@@ -49,8 +51,18 @@ function CategoryMenu({ setCategory }) {
                 type: UPDATE_CATEGORIES,
                 categories: categoryData.categories
             });
+            categoryData.categories.forEach(category => {
+                idbPromise('categories', 'put', category);
+            });
+        } else if (!loading) {
+            idbPromise('categories', 'get').then(categories => {
+                dispatch({
+                    type: UPDATE_CATEGORIES,
+                    categories: categories
+                });
+            });
         }
-    }, [categoryData, dispatch])
+    }, [categoryData, loading, dispatch])
 
 
     /*  click handler to update our global state instead of using the function

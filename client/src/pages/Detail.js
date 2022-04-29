@@ -13,6 +13,8 @@ import {
   } from '../utils/actions';
 
 import Cart from '../components/Cart';
+import { idbPromise } from '../utils/helpers';
+
 
 function Detail() {
     const [state, dispatch] = useStoreContext();
@@ -48,17 +50,39 @@ function Detail() {
         This is one of those cases where saving a single product to the global state object doesn't actually benefit us in any way, shape, or form.
         The single product's data will only be used in this specific component at this specific moment. This is the same reason why we don't worry 
         about saving form entry data from the login or signup forms to global state; it only needs to exist when we're using those components!
+
+        UPDATE useEffect(): Implement indexedDB Storage for Single Products. Update the useEffect() Hook to check if we have data returning from a 
+        global state and stored in products. Then we'll account for the following possibilities:
+            - If yes, let's get the current product and save it to the local state currentProduct
+            - If no, we don't have data in global state, let's check whether we retrieved data from the server using the useQuery() Hook. If yes, 
+              save that data to global state and to the product object store in IndexedDB, and we'll run the useEffect() Hook over again to make that first if statement run.
+            - If no, we don't have data in global state and we don't have a connection to the server, the loading data will be undefined. We'll then go to the product object store in IndexedDB and retrieve the data from there to provide the global state object.
     */
   useEffect(() => {
+      // already in global store
     if (products.length) {
       setCurrentProduct(products.find((product) => product._id === id));
-    } else if(data) {
+    } 
+    // retrieved from server
+    else if(data) {
         dispatch({
             type: UPDATE_PRODUCTS,
             products: data.products
         });
+        data.products.forEach((product) => {
+            idbPromise('products', 'put', product);
+        });
     }
-  }, [products, data, dispatch, id]);
+    // get cache from idb
+    else if(!loading) {
+        idbPromise('products', 'get').then((indexedProducts) => {
+            dispatch({
+                type: UPDATE_PRODUCTS,
+                products: indexedProducts
+            });
+        });
+    }
+  }, [products, data, loading, dispatch, id]);
 
   const addToCart = () => {
       const itemInCart = cart.find((cartItem) => cartItem._id === id);
@@ -68,11 +92,18 @@ function Detail() {
               _id: id,
               purchaseQuantity: parseInt(itemInCart.purchaseQuantity) + 1
           });
+          // if we're updating quantity, use exisiting item data and increment purchaseQuantity value by one
+          idbPromise('cart', 'put', {
+              ...itemInCart,
+              purchaseQuantity: parseInt(itemInCart.purchaseQuantity) + 1
+          });
       } else {
         dispatch({
             type: ADD_TO_CART,
             product: { ...currentProduct, purchaseQuantity: 1 }
         });
+        // if product isn't in the cart yet, add it to the current shopping cart in IndexedDB
+        idbPromise('cart', 'put', { ...currentProduct, purchaseQuantity: 1 });
 
       }
      
@@ -84,6 +115,9 @@ function Detail() {
           type: REMOVE_FROM_CART,
           _id: currentProduct._id
       });
+      // upon removal from cart, delete the item from IndexedDB using the `currentProduct._id`
+      // to remove
+      idbPromise('cart', 'delete', { ...currentProduct });
   };
 
   return (

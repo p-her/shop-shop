@@ -1,6 +1,7 @@
 import React from 'react';
 import { useStoreContext } from '../../utils/GlobalState';
 import { REMOVE_FROM_CART, UPDATE_CART_QUANTITY } from '../../utils/actions';
+import { idbPromise } from '../../utils/helpers';
 
 const CartItem = ({ item }) => {
 
@@ -13,6 +14,9 @@ const CartItem = ({ item }) => {
             type: REMOVE_FROM_CART,
             _id: item._id
         });
+        // we can now remove an item directly from the cart, and it'll be reflected both in global state 
+        // and the cart object store.
+        idbPromise('cart', 'delete', {...item }); 
     };
 
     /*  This will also clear up the error that React was throwing earlier, 
@@ -29,12 +33,14 @@ const CartItem = ({ item }) => {
                 type: REMOVE_FROM_CART,
                 _id: item._id
             });
+            idbPromise('cart', 'delete', { ...item });
         } else {
             dispatch({
                 type: UPDATE_CART_QUANTITY,
                 _id: item._id,
                 purchaseQuantity: parseInt(value)
             });
+            idbPromise('cart', 'put', { ...item, purchaseQuantity: parseInt(value) });
         }
     };
 
